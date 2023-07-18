@@ -110,9 +110,11 @@ impl From<LogicalId> for u32 {
     }
 }
 
-impl From<Double> for LogicalId {
-    fn from(value: Double) -> Self {
-        LogicalId(u32::try_from(value.0).unwrap())
+impl TryFrom<Double> for LogicalId {
+    type Error = ReadingError;
+
+    fn try_from(value: Double) -> Result<Self, Self::Error> {
+        Err(ReadingError::TypeConversionError("Cannot convert Double into LogicalId: ".to_string(), value.to_string()))
     }
 }
 
@@ -282,11 +284,17 @@ impl TryFrom<LogicalId> for LogicalInteger {
     }
 }
 
+impl From<f64> for LogicalFloat64 {
+    fn from(value: f64) -> Self {
+        Self(Double::from_number(value))
+    }
+}
+
 impl TryFrom<LogicalId> for LogicalFloat64 {
     type Error = ReadingError;
 
     fn try_from(value: LogicalId) -> Result<Self, Self::Error> {
-        f64::from_u32(value.0.into())
+        f64::from_u32(value.0)
             .map(|i| i.into())
             .ok_or(ReadingError::TypeConversionError(
                 value.to_string(),
