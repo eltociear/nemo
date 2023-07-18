@@ -86,7 +86,7 @@ use csv::{Reader, ReaderBuilder};
 use nemo_physical::builder_proxy::{ColumnBuilderProxy, PhysicalBuilderProxyEnum};
 use nemo_physical::table_reader::{Resource, TableReader};
 
-use crate::model::types::primitive_logical_value::{LogicalFloat64, LogicalInteger, LogicalString};
+use crate::model::types::primitive_logical_value::{LogicalFloat64, LogicalId, LogicalInteger, LogicalString};
 use crate::model::{DataSource, DsvFile, TupleConstraint, TypeConstraint};
 use crate::{
     builder_proxy::LogicalColumnBuilderProxyT,
@@ -205,6 +205,7 @@ impl DSVReader {
                     TypeConstraint::Exact(PrimitiveType::String) | TypeConstraint::AtLeast(PrimitiveType::String) => Box::new($lcbp.into_parser::<LogicalString>()),
                     TypeConstraint::Exact(PrimitiveType::Integer) | TypeConstraint::AtLeast(PrimitiveType::Integer) => Box::new($lcbp.into_parser::<LogicalInteger>()),
                     TypeConstraint::Exact(PrimitiveType::Float64) | TypeConstraint::AtLeast(PrimitiveType::Float64) => Box::new($lcbp.into_parser::<LogicalFloat64>()),
+                    TypeConstraint::Exact(PrimitiveType::Id) | TypeConstraint::AtLeast(PrimitiveType::Id) => Box::new($lcbp.into_parser::<LogicalId>()),
                     TypeConstraint::None => unreachable!("Type constraints for input types are always initialized (with fallbacks)."),
                     TypeConstraint::Tuple(_) => todo!("We do not support tuples in CSV currently. Should we?"),
                 };
@@ -223,6 +224,7 @@ impl DSVReader {
                 LogicalColumnBuilderProxyT::String(lcbp) => into_parser!(it, lcbp),
                 LogicalColumnBuilderProxyT::Integer(lcbp) => into_parser!(it, lcbp),
                 LogicalColumnBuilderProxyT::Float64(lcbp) => into_parser!(it, lcbp),
+                LogicalColumnBuilderProxyT::Id(lcbp) => into_parser!(it, lcbp),
             })
             .collect();
 

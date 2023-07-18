@@ -19,7 +19,7 @@ use nemo_physical::{
 use crate::{
     error::ReadingError,
     io::parser::{parse_bare_name, span_from_str},
-    model::types::primitive_logical_value::{LogicalFloat64, LogicalInteger, LogicalString},
+    model::types::primitive_logical_value::{LogicalFloat64, LogicalInteger, LogicalId, LogicalString},
 };
 
 use super::model::Term;
@@ -48,6 +48,8 @@ pub enum LogicalColumnBuilderProxyT<'a, 'b> {
     Integer(LogicalIntegerColumnBuilderProxy<'b>),
     /// Float64 variant
     Float64(LogicalFloat64ColumnBuilderProxy<'b>),
+    /// Id variant
+    Id(LogicalIdColumnBuilderProxy<'b>),
 }
 
 impl<'a, 'b, T> ColumnBuilderProxy<T> for LogicalColumnBuilderProxyT<'a, 'b>
@@ -56,6 +58,7 @@ where
     LogicalStringColumnBuilderProxy<'a, 'b>: ColumnBuilderProxy<T>,
     LogicalIntegerColumnBuilderProxy<'b>: ColumnBuilderProxy<T>,
     LogicalFloat64ColumnBuilderProxy<'b>: ColumnBuilderProxy<T>,
+    LogicalIdColumnBuilderProxy<'b>: ColumnBuilderProxy<T>,
 {
     fn commit(&mut self) {
         match self {
@@ -70,6 +73,9 @@ where
             }
             Self::Float64(lcbp) => {
                 <LogicalFloat64ColumnBuilderProxy as ColumnBuilderProxy<T>>::commit(lcbp)
+            }
+            Self::Id(lcbp) => {
+                <LogicalIdColumnBuilderProxy as ColumnBuilderProxy<T>>::commit(lcbp)
             }
         }
     }
@@ -88,6 +94,9 @@ where
             Self::Float64(lcbp) => {
                 <LogicalFloat64ColumnBuilderProxy as ColumnBuilderProxy<T>>::forget(lcbp)
             }
+            Self::Id(lcbp) => {
+                <LogicalIdColumnBuilderProxy as ColumnBuilderProxy<T>>::forget(lcbp)
+            }
         }
     }
 
@@ -97,6 +106,7 @@ where
             Self::String(lcbp) => lcbp.add(input),
             Self::Integer(lcbp) => lcbp.add(input),
             Self::Float64(lcbp) => lcbp.add(input),
+            Self::Id(lcbp) => lcbp.add(input),
         }
     }
 }
@@ -250,6 +260,58 @@ where
     }
 }
 
+
+
+
+
+
+
+
+
+/// Logical [`ColumnBuilderProxy`] to add Id
+#[derive(Debug)]
+pub struct LogicalIdColumnBuilderProxy<'b> {
+    inner: &'b mut PhysicalGenericColumnBuilderProxy<u32>,
+}
+
+impl<'a, 'b> LogicalIdColumnBuilderProxy<'b> {
+    /// Create new LogicalIdColumnBuilderProxy from PhysicalI64ColumnBuilderProxy (wrapped in enum)
+    pub fn new(physical_builder_proxy: &'b mut PhysicalBuilderProxyEnum<'a>) -> Self {
+        match physical_builder_proxy {
+            PhysicalBuilderProxyEnum::U32(inner) => Self { inner },
+            _ => unreachable!("If the database representation of the logical types is correct, we never reach this branch.")
+        }
+    }
+
+    /// wrap LogicalIdColumnBuilderProxy into GenericLogicalParser
+    pub fn into_parser<Intermediate>(self) -> GenericLogicalParser<Intermediate, Self>
+    where
+        Self: ColumnBuilderProxy<Intermediate>,
+    {
+        GenericLogicalParser::new(self)
+    }
+}
+
+impl<T> ColumnBuilderProxy<T> for LogicalIdColumnBuilderProxy<'_>
+where
+    LogicalId: TryFrom<T>,
+    ReadingError: From<<LogicalId as TryFrom<T>>::Error>,
+{
+    logical_generic_trait_impl!();
+
+    fn add(&mut self, input: T) -> Result<(), ReadingError> {
+        <Self as ColumnBuilderProxy<T>>::commit(self);
+        self.inner.add(LogicalId::try_from(input)?.into())
+    }
+}
+
+
+
+
+
+
+
+
 fn parse_rdf_term_from_string(input: String) -> Term {
     const BASE: &str = "a:";
 
@@ -389,6 +451,19 @@ where
         self.inner.add(Double::new(input.parse()?)?.into())
     }
 }
+
+impl<T> ColumnBuilderProxy<String> for GenericLogicalParser<LogicalId, T>
+where
+    T: ColumnBuilderProxy<LogicalId>,
+{
+    logical_generic_trait_impl!();
+
+    fn add(&mut self, input: String) -> Result<(), ReadingError> {
+        <Self as ColumnBuilderProxy<String>>::commit(self);
+        self.inner.add(input.parse::<u32>()?.into())
+    }
+}
+
 
 #[cfg(test)]
 mod test {

@@ -75,7 +75,48 @@ impl From<LogicalInteger> for i64 {
     }
 }
 
+impl From<LogicalId> for i64 {
+    fn from(value: LogicalId) -> Self {
+        value.0.into()
+    }
+}
+
 impl std::fmt::Display for LogicalInteger {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// An Api wrapper fot the logical id type
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct LogicalId(u32);
+
+impl From<i64> for LogicalId {
+    fn from(value: i64) -> Self {
+        LogicalId(u32::try_from(value).unwrap())
+    }
+}
+
+impl From<u32> for LogicalId {
+    fn from(value: u32) -> Self {
+        LogicalId(value)
+    }
+}
+
+impl From<LogicalId> for u32 {
+    fn from(value: LogicalId) -> Self {
+        value.0
+    }
+}
+
+impl From<Double> for LogicalId {
+    fn from(value: Double) -> Self {
+        LogicalId(u32::try_from(value.0).unwrap())
+    }
+}
+
+impl std::fmt::Display for LogicalId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -131,6 +172,12 @@ impl From<LogicalFloat64> for Term {
     }
 }
 
+impl From<LogicalId> for Term {
+    fn from(value: LogicalId) -> Self {
+        Self::NumericLiteral(NumericLiteral::Integer(value.into()))
+    }
+}
+
 impl From<LanguageString> for PhysicalString {
     fn from(value: LanguageString) -> Self {
         format!("{LANGUAGE_STRING_PREFIX}{}@{}", value.0, value.1).into()
@@ -161,6 +208,12 @@ impl From<LogicalFloat64> for PhysicalString {
     }
 }
 
+impl From<LogicalId> for PhysicalString {
+    fn from(value: LogicalId) -> Self {
+        format!("{INTEGER_PREFIX}{value}").into()
+    }
+}
+
 impl From<Identifier> for PhysicalString {
     fn from(value: Identifier) -> Self {
         format!("{CONSTANT_PREFIX}{value}").into()
@@ -185,6 +238,12 @@ impl From<LogicalFloat64> for LogicalString {
     }
 }
 
+impl From<LogicalId> for LogicalString {
+    fn from(value: LogicalId) -> Self {
+        value.0.to_string().into()
+    }
+}
+
 impl TryFrom<LogicalString> for LogicalInteger {
     type Error = ParseIntError;
 
@@ -199,6 +258,40 @@ impl TryFrom<LogicalString> for LogicalFloat64 {
     fn try_from(value: LogicalString) -> Result<Self, Self::Error> {
         let parsed = value.0.parse::<f64>()?;
         Double::new(parsed).map(|d| d.into())
+    }
+}
+
+impl TryFrom<LogicalString> for LogicalId {
+    type Error = ParseIntError;
+
+    fn try_from(value: LogicalString) -> Result<Self, Self::Error> {
+        value.0.parse::<u32>().map(|i| i.into())
+    }
+}
+
+impl TryFrom<LogicalId> for LogicalInteger {
+    type Error = ReadingError;
+
+    fn try_from(value: LogicalId) -> Result<Self, Self::Error> {
+        i64::from_u32(value.0.into())
+            .map(|i| i.into())
+            .ok_or(ReadingError::TypeConversionError(
+                value.to_string(),
+                PrimitiveType::Integer.to_string(),
+            ))
+    }
+}
+
+impl TryFrom<LogicalId> for LogicalFloat64 {
+    type Error = ReadingError;
+
+    fn try_from(value: LogicalId) -> Result<Self, Self::Error> {
+        f64::from_u32(value.0.into())
+            .map(|i| i.into())
+            .ok_or(ReadingError::TypeConversionError(
+                value.to_string(),
+                PrimitiveType::Integer.to_string(),
+            ))
     }
 }
 
@@ -226,6 +319,33 @@ impl TryFrom<LogicalInteger> for LogicalFloat64 {
             ))?,
         )
         .map(|d| d.into())
+    }
+}
+
+impl TryFrom<LogicalInteger> for LogicalId {
+    type Error = ReadingError;
+
+    fn try_from(value: LogicalInteger) -> Result<Self, Self::Error> {
+        Double::new(
+            u32::from_i64(value.0).ok_or(ReadingError::TypeConversionError(
+                value.to_string(),
+                PrimitiveType::Integer.to_string(),
+            ))?.into(),
+        )
+        .map(|d| d.into())
+    }
+}
+
+impl TryFrom<LogicalFloat64> for LogicalId {
+    type Error = ReadingError;
+
+    fn try_from(value: LogicalFloat64) -> Result<Self, Self::Error> {
+        u32::from_f64(value.0.into())
+            .map(|i| i.into())
+            .ok_or(ReadingError::TypeConversionError(
+                value.to_string(),
+                PrimitiveType::Integer.to_string(),
+            ))
     }
 }
 
@@ -269,6 +389,32 @@ impl TryFrom<Term> for LogicalInteger {
                 _ => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Integer)),
             },
             _ => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Integer)),
+        }
+    }
+}
+
+impl TryFrom<Term> for LogicalId {
+    type Error = InvalidRuleTermConversion;
+
+    fn try_from(term: Term) -> Result<Self, Self::Error> {
+        match term {
+            Term::NumericLiteral(NumericLiteral::Integer(i)) => Ok(i.into()),
+            Term::NumericLiteral(NumericLiteral::Decimal(i, 0)) => Ok(i.into()),
+            Term::RdfLiteral(RdfLiteral::DatatypeValue {
+                ref value,
+                ref datatype,
+            }) => match datatype.as_str() {
+                // XSD 3.4.13 integer
+                // [Definition:] integer is ·derived· from decimal by
+                // fixing the value of ·fractionDigits· to be 0 and
+                // disallowing the trailing decimal point.
+                XSD_INTEGER | XSD_DECIMAL => value
+                    .parse()
+                    .map(|i: u32| i.into())
+                    .map_err(|_err| InvalidRuleTermConversion::new(term, PrimitiveType::Id)),
+                _ => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Id)),
+            },
+            _ => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Id)),
         }
     }
 }
@@ -372,6 +518,31 @@ impl TryFrom<Term> for PhysicalString {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /// Enum for values in the logical layer
 #[derive(Debug)]
 pub enum PrimitiveLogicalValueT {
@@ -383,6 +554,8 @@ pub enum PrimitiveLogicalValueT {
     Integer(LogicalInteger),
     /// Float64 variant
     Float64(LogicalFloat64),
+    /// Id variant
+    Id(LogicalId),
 }
 
 impl From<Term> for PrimitiveLogicalValueT {
@@ -409,11 +582,18 @@ impl From<LogicalFloat64> for PrimitiveLogicalValueT {
     }
 }
 
+impl From<LogicalId> for PrimitiveLogicalValueT {
+    fn from(value: LogicalId) -> Self {
+        Self::Id(value)
+    }
+}
+
 pub(super) type DefaultAnyIterator<'a> = Box<dyn Iterator<Item = Term> + 'a>;
 pub(super) type DefaultStringIterator<'a> = Box<dyn Iterator<Item = LogicalString> + 'a>;
 pub(super) type DefaultIntegerIterator<'a> = Box<dyn Iterator<Item = LogicalInteger> + 'a>;
 pub(super) type DefaultFloat64Iterator<'a> = Box<dyn Iterator<Item = LogicalFloat64> + 'a>;
 pub(super) type DefaultSerializedIterator<'a> = Box<dyn Iterator<Item = String> + 'a>;
+pub(super) type DefaultIdIterator<'a> = Box<dyn Iterator<Item = LogicalId> + 'a>;
 
 /// Iterator over one kind of possible logical values
 #[allow(missing_debug_implementations)]
@@ -426,6 +606,8 @@ pub enum PrimitiveLogicalValueIteratorT<'a> {
     Integer(DefaultIntegerIterator<'a>),
     /// Float64 variant
     Float64(DefaultFloat64Iterator<'a>),
+    /// Id variant
+    Id(DefaultIdIterator<'a>),
 }
 
 impl<'a> Iterator for PrimitiveLogicalValueIteratorT<'a> {
@@ -437,6 +619,7 @@ impl<'a> Iterator for PrimitiveLogicalValueIteratorT<'a> {
             Self::String(iter) => Some(PrimitiveLogicalValueT::String(iter.next()?)),
             Self::Integer(iter) => Some(PrimitiveLogicalValueT::Integer(iter.next()?)),
             Self::Float64(iter) => Some(PrimitiveLogicalValueT::Float64(iter.next()?)),
+            Self::Id(iter) => Some(PrimitiveLogicalValueT::Id(iter.next()?)),
         }
     }
 }
@@ -622,6 +805,39 @@ impl<'a> From<IntegerOutputMapper<'a>> for DefaultSerializedIterator<'a> {
         )
     }
 }
+
+
+
+pub(super) struct IdOutputMapper<'a> {
+    physical_iter: Box<dyn Iterator<Item = u32> + 'a>,
+}
+
+impl<'a> IdOutputMapper<'a> {
+    pub(super) fn new(phy: DataValueIteratorT<'a>) -> Self {
+        match phy {
+            DataValueIteratorT::U32(physical_iter) => Self { physical_iter },
+            _ => unreachable!("If the database representation of the logical types is correct, we never reach this branch.")
+        }
+    }
+}
+
+impl<'a> From<IdOutputMapper<'a>> for DefaultIdIterator<'a> {
+    fn from(source: IdOutputMapper<'a>) -> Self {
+        Box::new(source.physical_iter.map(|i| i.into()))
+    }
+}
+
+impl<'a> From<IdOutputMapper<'a>> for DefaultSerializedIterator<'a> {
+    fn from(source: IdOutputMapper<'a>) -> Self {
+        Box::new(
+            source
+                .physical_iter
+                .map(|i| LogicalId::from(i).to_string()),
+        )
+    }
+}
+
+
 
 pub(super) struct Float64OutputMapper<'a> {
     physical_iter: Box<dyn Iterator<Item = Double> + 'a>,

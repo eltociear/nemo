@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use crate::builder_proxy::{
     LogicalAnyColumnBuilderProxy, LogicalColumnBuilderProxyT, LogicalFloat64ColumnBuilderProxy,
-    LogicalIntegerColumnBuilderProxy, LogicalStringColumnBuilderProxy,
+    LogicalIdColumnBuilderProxy, LogicalIntegerColumnBuilderProxy, LogicalStringColumnBuilderProxy,
 };
 use crate::io::parser::ParseError;
 use nemo_physical::builder_proxy::PhysicalBuilderProxyEnum;
@@ -12,7 +12,7 @@ use nemo_physical::datatypes::{DataTypeName, DataValueT};
 
 use super::error::InvalidRuleTermConversion;
 use super::primitive_logical_value::{
-    AnyOutputMapper, DefaultSerializedIterator, Float64OutputMapper, IntegerOutputMapper,
+    AnyOutputMapper, DefaultSerializedIterator, Float64OutputMapper, IdOutputMapper, IntegerOutputMapper,
     PrimitiveLogicalValueIteratorT, StringOutputMapper,
 };
 use crate::model::{NestedType, Term};
@@ -69,7 +69,8 @@ generate_logical_type_enum!(
     (Any, "any"),
     (String, "string"),
     (Integer, "integer"),
-    (Float64, "float64")
+    (Float64, "float64"),
+    (Id, "id")
 );
 
 impl PartialOrd for PrimitiveType {
@@ -114,6 +115,7 @@ impl From<PrimitiveType> for DataTypeName {
             PrimitiveType::String => Self::String,
             PrimitiveType::Integer => Self::I64,
             PrimitiveType::Float64 => Self::Double,
+            PrimitiveType::Id => Self::U32,
         }
     }
 }
@@ -152,6 +154,7 @@ impl PrimitiveType {
             Self::String => false,
             Self::Integer => true,
             Self::Float64 => true,
+            Self::Id => false,
         }
     }
 
@@ -172,6 +175,9 @@ impl PrimitiveType {
             }
             Self::Float64 => {
                 LogicalColumnBuilderProxyT::Float64(LogicalFloat64ColumnBuilderProxy::new(physical))
+            }
+            Self::Id => {
+                LogicalColumnBuilderProxyT::Id(LogicalIdColumnBuilderProxy::new(physical))
             }
         }
     }
@@ -194,6 +200,9 @@ impl PrimitiveType {
             Self::Float64 => PrimitiveLogicalValueIteratorT::Float64(
                 Float64OutputMapper::new(physical_iter).into(),
             ),
+            Self::Id => PrimitiveLogicalValueIteratorT::Id(
+                IdOutputMapper::new(physical_iter).into(),
+            ),
         }
     }
 
@@ -208,6 +217,7 @@ impl PrimitiveType {
             Self::String => StringOutputMapper::new(physical_iter).into(),
             Self::Integer => IntegerOutputMapper::new(physical_iter).into(),
             Self::Float64 => Float64OutputMapper::new(physical_iter).into(),
+            Self::Id => IdOutputMapper::new(physical_iter).into(),
         }
     }
 }
