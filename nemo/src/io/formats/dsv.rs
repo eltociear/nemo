@@ -86,7 +86,9 @@ use csv::{Reader, ReaderBuilder};
 use nemo_physical::builder_proxy::{ColumnBuilderProxy, PhysicalBuilderProxyEnum};
 use nemo_physical::table_reader::{Resource, TableReader};
 
-use crate::model::types::primitive_logical_value::{LogicalFloat64, LogicalId, LogicalInteger, LogicalString};
+use crate::model::types::primitive_logical_value::{
+    LogicalFloat64, LogicalId, LogicalInteger, LogicalString,
+};
 use crate::model::{DataSource, DsvFile, TupleConstraint, TypeConstraint};
 use crate::{
     builder_proxy::LogicalColumnBuilderProxyT,

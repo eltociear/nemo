@@ -19,7 +19,9 @@ use nemo_physical::{
 use crate::{
     error::ReadingError,
     io::parser::{parse_bare_name, span_from_str},
-    model::types::primitive_logical_value::{LogicalFloat64, LogicalInteger, LogicalId, LogicalString},
+    model::types::primitive_logical_value::{
+        LogicalFloat64, LogicalId, LogicalInteger, LogicalString,
+    },
 };
 
 use super::model::Term;
@@ -74,9 +76,7 @@ where
             Self::Float64(lcbp) => {
                 <LogicalFloat64ColumnBuilderProxy as ColumnBuilderProxy<T>>::commit(lcbp)
             }
-            Self::Id(lcbp) => {
-                <LogicalIdColumnBuilderProxy as ColumnBuilderProxy<T>>::commit(lcbp)
-            }
+            Self::Id(lcbp) => <LogicalIdColumnBuilderProxy as ColumnBuilderProxy<T>>::commit(lcbp),
         }
     }
 
@@ -94,9 +94,7 @@ where
             Self::Float64(lcbp) => {
                 <LogicalFloat64ColumnBuilderProxy as ColumnBuilderProxy<T>>::forget(lcbp)
             }
-            Self::Id(lcbp) => {
-                <LogicalIdColumnBuilderProxy as ColumnBuilderProxy<T>>::forget(lcbp)
-            }
+            Self::Id(lcbp) => <LogicalIdColumnBuilderProxy as ColumnBuilderProxy<T>>::forget(lcbp),
         }
     }
 
@@ -260,14 +258,6 @@ where
     }
 }
 
-
-
-
-
-
-
-
-
 /// Logical [`ColumnBuilderProxy`] to add Id
 #[derive(Debug)]
 pub struct LogicalIdColumnBuilderProxy<'b> {
@@ -304,13 +294,6 @@ where
         self.inner.add(LogicalId::try_from(input)?.into())
     }
 }
-
-
-
-
-
-
-
 
 fn parse_rdf_term_from_string(input: String) -> Term {
     const BASE: &str = "a:";
@@ -463,7 +446,6 @@ where
         self.inner.add(input.parse::<u32>()?.into())
     }
 }
-
 
 #[cfg(test)]
 mod test {

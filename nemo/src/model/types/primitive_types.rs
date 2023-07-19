@@ -12,8 +12,8 @@ use nemo_physical::datatypes::{DataTypeName, DataValueT};
 
 use super::error::InvalidRuleTermConversion;
 use super::primitive_logical_value::{
-    AnyOutputMapper, DefaultSerializedIterator, Float64OutputMapper, IdOutputMapper, IntegerOutputMapper,
-    PrimitiveLogicalValueIteratorT, StringOutputMapper,
+    AnyOutputMapper, DefaultSerializedIterator, Float64OutputMapper, IdOutputMapper,
+    IntegerOutputMapper, PrimitiveLogicalValueIteratorT, StringOutputMapper,
 };
 use crate::model::{NestedType, Term};
 
@@ -182,9 +182,7 @@ impl PrimitiveType {
             Self::Float64 => {
                 LogicalColumnBuilderProxyT::Float64(LogicalFloat64ColumnBuilderProxy::new(physical))
             }
-            Self::Id => {
-                LogicalColumnBuilderProxyT::Id(LogicalIdColumnBuilderProxy::new(physical))
-            }
+            Self::Id => LogicalColumnBuilderProxyT::Id(LogicalIdColumnBuilderProxy::new(physical)),
         }
     }
 
@@ -206,9 +204,9 @@ impl PrimitiveType {
             Self::Float64 => PrimitiveLogicalValueIteratorT::Float64(
                 Float64OutputMapper::new(physical_iter).into(),
             ),
-            Self::Id => PrimitiveLogicalValueIteratorT::Id(
-                IdOutputMapper::new(physical_iter).into(),
-            ),
+            Self::Id => {
+                PrimitiveLogicalValueIteratorT::Id(IdOutputMapper::new(physical_iter).into())
+            }
         }
     }
 

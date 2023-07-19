@@ -123,7 +123,10 @@ impl TryFrom<Double> for LogicalId {
     type Error = ReadingError;
 
     fn try_from(value: Double) -> Result<Self, Self::Error> {
-        Err(ReadingError::TypeConversionError("Cannot convert Double into LogicalId: ".to_string(), value.to_string()))
+        Err(ReadingError::TypeConversionError(
+            "Cannot convert Double into LogicalId: ".to_string(),
+            value.to_string(),
+        ))
     }
 }
 
@@ -416,13 +419,13 @@ impl TryFrom<Term> for LogicalId {
 
     fn try_from(term: Term) -> Result<Self, Self::Error> {
         match term {
-            Term::NumericLiteral(NumericLiteral::Integer(i)) => {
-                match i.try_into() {
-                    Ok(logical_id) => Ok(logical_id),
-                    Err(_) => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Id)),
-                }
+            Term::NumericLiteral(NumericLiteral::Integer(i)) => match i.try_into() {
+                Ok(logical_id) => Ok(logical_id),
+                Err(_) => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Id)),
             },
-            Term::NumericLiteral(NumericLiteral::Decimal(_i, 0)) => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Id)),
+            Term::NumericLiteral(NumericLiteral::Decimal(_i, 0)) => {
+                Err(InvalidRuleTermConversion::new(term, PrimitiveType::Id))
+            }
             Term::RdfLiteral(RdfLiteral::DatatypeValue {
                 ref value,
                 ref datatype,
@@ -548,31 +551,6 @@ impl TryFrom<Term> for PhysicalString {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /// Enum for values in the logical layer
 #[derive(Debug)]
@@ -837,8 +815,6 @@ impl<'a> From<IntegerOutputMapper<'a>> for DefaultSerializedIterator<'a> {
     }
 }
 
-
-
 pub(super) struct IdOutputMapper<'a> {
     physical_iter: Box<dyn Iterator<Item = u32> + 'a>,
 }
@@ -860,15 +836,9 @@ impl<'a> From<IdOutputMapper<'a>> for DefaultIdIterator<'a> {
 
 impl<'a> From<IdOutputMapper<'a>> for DefaultSerializedIterator<'a> {
     fn from(source: IdOutputMapper<'a>) -> Self {
-        Box::new(
-            source
-                .physical_iter
-                .map(|i| LogicalId::from(i).to_string()),
-        )
+        Box::new(source.physical_iter.map(|i| LogicalId::from(i).to_string()))
     }
 }
-
-
 
 pub(super) struct Float64OutputMapper<'a> {
     physical_iter: Box<dyn Iterator<Item = Double> + 'a>,
