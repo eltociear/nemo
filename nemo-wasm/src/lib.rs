@@ -199,6 +199,7 @@ impl NemoResults {
                     PrimitiveLogicalValueT::String(s) => JsValue::from(String::from(s)),
                     PrimitiveLogicalValueT::Integer(i) => JsValue::from(i64::from(i)),
                     PrimitiveLogicalValueT::Float64(d) => JsValue::from(f64::from(Double::from(d))),
+                    PrimitiveLogicalValueT::Id(i) => JsValue::from(u32::from(i)),
                 })
                 .collect();
 

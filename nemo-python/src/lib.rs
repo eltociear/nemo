@@ -103,6 +103,7 @@ impl NemoResults {
                     PrimitiveLogicalValueT::Float64(d) => {
                         f64::from(Double::from(d)).into_py(slf.py())
                     }
+                    PrimitiveLogicalValueT::Id(i) => u32::from(i).into_py(slf.py()),
                 })
                 .collect(),
         )

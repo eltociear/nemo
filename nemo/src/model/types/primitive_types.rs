@@ -98,6 +98,11 @@ impl PartialOrd for PrimitiveType {
                 Self::Float64 => Some(std::cmp::Ordering::Equal),
                 _ => None,
             },
+            Self::Id => match other {
+                Self::Any => None, // TODO: should be the following once reasoning supports casting: Some(std::cmp::Ordering::Less),
+                Self::Id => Some(std::cmp::Ordering::Equal),
+                _ => None,
+            },
         }
     }
 }
@@ -142,6 +147,7 @@ impl PrimitiveType {
             Self::String => DataValueT::String(gt.try_into()?),
             Self::Integer => DataValueT::I64(gt.try_into()?),
             Self::Float64 => DataValueT::Double(gt.try_into()?),
+            Self::Id => DataValueT::U32(gt.try_into()?),
         };
 
         Ok(result)

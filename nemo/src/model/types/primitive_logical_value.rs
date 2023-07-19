@@ -92,9 +92,18 @@ impl std::fmt::Display for LogicalInteger {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LogicalId(u32);
 
-impl From<i64> for LogicalId {
-    fn from(value: i64) -> Self {
-        LogicalId(u32::try_from(value).unwrap())
+impl TryFrom<i64> for LogicalId {
+    type Error = ReadingError;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        if i64::from(u32::MIN) <= value && value <= i64::from(u32::MAX) {
+            Ok(LogicalId(value.try_into().unwrap()))
+        } else {
+            Err(ReadingError::TypeConversionError(
+                value.to_string(),
+                PrimitiveType::Integer.to_string(),
+            ))
+        }
     }
 }
 
@@ -334,13 +343,14 @@ impl TryFrom<LogicalInteger> for LogicalId {
     type Error = ReadingError;
 
     fn try_from(value: LogicalInteger) -> Result<Self, Self::Error> {
-        Double::new(
-            u32::from_i64(value.0).ok_or(ReadingError::TypeConversionError(
+        if i64::from(u32::MIN) <= value.0 && value.0 <= i64::from(u32::MAX) {
+            Ok(LogicalId(value.0.try_into().unwrap()))
+        } else {
+            Err(ReadingError::TypeConversionError(
                 value.to_string(),
                 PrimitiveType::Integer.to_string(),
-            ))?.into(),
-        )
-        .map(|d| d.into())
+            ))
+        }
     }
 }
 
@@ -406,8 +416,13 @@ impl TryFrom<Term> for LogicalId {
 
     fn try_from(term: Term) -> Result<Self, Self::Error> {
         match term {
-            Term::NumericLiteral(NumericLiteral::Integer(i)) => Ok(i.into()),
-            Term::NumericLiteral(NumericLiteral::Decimal(i, 0)) => Ok(i.into()),
+            Term::NumericLiteral(NumericLiteral::Integer(i)) => {
+                match i.try_into() {
+                    Ok(logical_id) => Ok(logical_id),
+                    Err(_) => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Id)),
+                }
+            },
+            Term::NumericLiteral(NumericLiteral::Decimal(_i, 0)) => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Id)),
             Term::RdfLiteral(RdfLiteral::DatatypeValue {
                 ref value,
                 ref datatype,
@@ -424,6 +439,14 @@ impl TryFrom<Term> for LogicalId {
             },
             _ => Err(InvalidRuleTermConversion::new(term, PrimitiveType::Id)),
         }
+    }
+}
+
+impl TryFrom<Term> for u32 {
+    type Error = InvalidRuleTermConversion;
+
+    fn try_from(value: Term) -> Result<Self, Self::Error> {
+        Ok(LogicalId::try_from(value)?.into())
     }
 }
 
