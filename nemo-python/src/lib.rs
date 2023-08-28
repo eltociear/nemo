@@ -97,6 +97,7 @@ impl NemoResults {
                         Term::NumericLiteral(_) => rdf.to_string().into_py(slf.py()),
                         Term::StringLiteral(s) => s.into_py(slf.py()),
                         Term::RdfLiteral(lit) => lit.to_string().into_py(slf.py()),
+                        Term::MapLiteral(_map) => todo!("maps are not yet supported"),
                     },
                     PrimitiveLogicalValueT::String(s) => String::from(s).into_py(slf.py()),
                     PrimitiveLogicalValueT::Integer(i) => i64::from(i).into_py(slf.py()),

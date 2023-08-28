@@ -325,6 +325,7 @@ impl NemoResults {
                         Term::NumericLiteral(_) => JsValue::from(rdf.to_string()),
                         Term::StringLiteral(s) => JsValue::from(s),
                         Term::RdfLiteral(lit) => JsValue::from(lit.to_string()),
+                        Term::MapLiteral(_map) => todo!("maps are not yet supported"),
                     },
                     PrimitiveLogicalValueT::String(s) => JsValue::from(String::from(s)),
                     PrimitiveLogicalValueT::Integer(i) => JsValue::from(i64::from(i)),

@@ -23,3 +23,6 @@ pub use term::*;
 
 mod term_operation;
 pub use term_operation::*;
+
+mod map;
+pub use map::*;
