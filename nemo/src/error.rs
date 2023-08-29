@@ -5,8 +5,13 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 use crate::{
-    execution::selection_strategy::strategy::SelectionStrategyError, io::parser::LocatedParseError,
-    model::chase_model::RuleTranslationError, model::types::error::TypeError,
+    execution::selection_strategy::strategy::SelectionStrategyError,
+    io::{
+        formats::{FileAction, FileFormats},
+        parser::LocatedParseError,
+    },
+    model::chase_model::RuleTranslationError,
+    model::types::error::TypeError,
     program_analysis::analysis::RuleAnalysisError,
 };
 
@@ -68,6 +73,14 @@ pub enum Error {
     /// Error in the physical layer
     #[error(transparent)]
     PhysicalError(#[from] nemo_physical::error::Error),
+    ///
+    #[error("{action} is not support for {format} format")]
+    UnsupportedFileFormat {
+        /// Unsupported action on the file
+        action: FileAction,
+        /// File format
+        format: FileFormats,
+    },
 }
 
 impl From<ReadingError> for Error {
